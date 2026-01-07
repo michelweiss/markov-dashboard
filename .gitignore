@@ -32,3 +32,9 @@ logs/
 # CSV outputs (keep demo_data only)
 **/*.csv
 !demo_data/*.csv
+
+# --- tools: allowlist only ---
+tools/*
+!tools/demo_loader.py
+!tools/markov_core_v4.py
+
