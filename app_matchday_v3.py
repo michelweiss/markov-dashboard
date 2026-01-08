@@ -7,6 +7,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# ============================================================
+# LIVE VERSION – uses real data sources and API connections
+# Not intended for public distribution
+# ============================================================
+
+
 import json
 import pandas as pd
 import streamlit as st
@@ -24,7 +30,7 @@ if str(MARKOV_ROOT) not in sys.path:
 # --------------------------------------------------
 # DEMO MODE
 # --------------------------------------------------
-DEMO_MODE = True   # ← für GitHub / Kollegen
+DEMO_MODE = False   # ← für GitHub / Kollegen
 # DEMO_MODE = False  # ← für dich lokal mit API
 
 # ─────────────────────────────────────────────
@@ -117,6 +123,37 @@ def compute_team_strength_from_matches(team_df: pd.DataFrame):
 
 @st.cache_data
 def load_json(path: Path):
+    with open(path) as f:
+        return json.load(f)
+
+
+@st.cache_data
+def load_climate_probabilities():
+    path = MARKOV_ROOT / "climate" / "data" / "climate_probabilities_energy.json"
+    if not path.exists():
+        return None
+    with open(path) as f:
+        return json.load(f)
+
+
+@st.cache_data
+def load_climate_json(path: Path):
+    if not path.exists():
+        return None
+    with open(path) as f:
+        return json.load(f)
+
+
+@st.cache_data
+def load_climate_temperature():
+    path = (
+        MARKOV_ROOT
+        / "climate"
+        / "data"
+        / "climate_probabilities_temperature_M.json"
+    )
+    if not path.exists():
+        return None
     with open(path) as f:
         return json.load(f)
 
@@ -307,6 +344,12 @@ def render_financial_risk():
         "Credit is displayed as Risk-On (inverted from stress)."
     )
 
+def climate_light(p: float) -> str:
+    if p >= 0.65:
+        return "🟢"
+    if p >= 0.45:
+        return "🟡"
+    return "🔴"
 
 
 # ─────────────────────────────────────────────
@@ -422,11 +465,69 @@ with tab_financial:
     render_financial_risk()
 
 # ─────────────────────────────────────────────
-# CLIMATE TAB (PLACEHOLDER)
+# CLIMATE TAB
 # ─────────────────────────────────────────────
 with tab_climate:
-    st.subheader("Climate / ESG (coming later)")
-    st.info("Climate risk, weather events, ESG probabilities.")
+
+    st.subheader("🌡️ Climate · Global Temperature (Monthly)")
+
+    js = load_climate_temperature()
+
+    if js is None:
+        st.warning("Climate temperature data not available.")
+    else:
+        labels = js["state_labels"]
+        current_state = labels[str(js["current_state"])]
+
+        p = js["probabilities_next_state"]
+
+        next_state = max(p, key=p.get)
+        confidence = p[next_state]
+
+        cooling_states = {"WARM", "NEUTRAL", "COOL"}
+        cooling_risk = sum(p[s] for s in cooling_states if s in p)
+        
+                
+
+        stability = (
+            "High" if confidence >= 0.55
+            else "Moderate" if confidence >= 0.40
+            else "Low"
+        )
+
+        rows = [
+            {"Metric": "Current Regime", "Value": current_state},
+            {
+                "Metric": "Next Month (Base Case)",
+                "Value": f"{next_state}",
+            },
+            {
+                "Metric": "Probability",
+                "Value": f"{climate_light(confidence)} {int(confidence*100)}%",
+            },
+            {
+                "Metric": "Cooling Risk (1M)",
+                "Value": f"{climate_light(cooling_risk)} {int(cooling_risk*100)}%",
+            },
+            {
+                "Metric": "Regime Stability",
+                "Value": stability,
+            },
+        ]
+
+        df = pd.DataFrame(rows)
+
+        st.dataframe(
+            df,
+            hide_index=True,
+            use_container_width=True
+        )
+
+        st.caption(
+            "Monthly Markov regime probabilities · "
+            "Cooling Risk = probability of transition to cooler states next month."
+        )
+
 
 # ─────────────────────────────────────────────
 # ABOUT

@@ -114,6 +114,7 @@ def render_economics_tab():
 
     st.subheader("📊 Macro Economics")
 
+
     events = load_macro_events()
     states = load_event_states()
     pwin   = load_pwin_events()
@@ -143,14 +144,17 @@ def render_economics_tab():
         st.warning("No macro events available.")
         return
 
-    today = date.today()
-    events["event_day"] = events["date"].dt.date
+    now = pd.Timestamp.today()
 
-    upcoming = events[events.event_day >= today]
+    upcoming = events[
+        (events["date"].dt.year == now.year) &
+        (events["date"].dt.month == now.month)
+    ]
+    
     upcoming = (
         upcoming
         .sort_values("date")
-        .groupby("event", as_index=False)
+        .groupby(["event", "country"], as_index=False)
         .first()
     )
 
@@ -387,99 +391,45 @@ def render_economics_tab():
     # default empty columns
     table["Conf"] = "—"
     
+    # US CPI
     if cpi_summary:
-        cpi_dates = table[
-            (table["event"] == "US CPI") &
-            (table["date"].dt.date >= today)
-        ].sort_values("date")
+        table.loc[table["event"] == "US CPI", "Conf"] = cpi_summary["label"]
     
-        if not cpi_dates.empty:
-            d = cpi_dates.iloc[0]["date"]
-            mask = (table["event"] == "US CPI") & (table["date"] == d)
-        else:
-            mask = table["event"] == "US CPI"
-    
-        table.loc[mask, "Conf"] = cpi_summary["label"]
-    
-        
+    # US NFP
     if nfp_summary:
-        nfp_dates = table[
-            (table["event"] == "US NFP") &
-            (table["date"].dt.date >= today)
-        ].sort_values("date")
+        table.loc[table["event"] == "US NFP", "Conf"] = nfp_summary["label"]
     
-        if not nfp_dates.empty:
-            d = nfp_dates.iloc[0]["date"]
-            mask = (table["event"] == "US NFP") & (table["date"] == d)
-        else:
-            mask = table["event"] == "US NFP"
-    
-        table.loc[mask, "Conf"] = nfp_summary["label"]
-    
-                 
+    # US GDP
     if gdp_summary:
-        gdp_dates = table[
-            table["event"].str.contains("US GDP", na=False)
-        ].sort_values("date")
+        table.loc[table["event"].str.contains("US GDP", na=False), "Conf"] = gdp_summary["label"]
     
-        if not gdp_dates.empty:
-            d = gdp_dates.iloc[0]["date"]
-            mask = table["event"].str.contains("US GDP", na=False) & (table["date"] == d)
-        else:
-            mask = table["event"].str.contains("US GDP", na=False)
-    
-        table.loc[mask, "Conf"] = gdp_summary["label"]
-    
-
-
+    # FOMC
     if fomc_summary:
-        fomc_dates = table[
-            (table["event"] == "FOMC") &
-            (table["date"].dt.date >= today)
-        ].sort_values("date")
+        table.loc[table["event"] == "FOMC", "Conf"] = fomc_summary["label"]
     
-        if not fomc_dates.empty:
-            d = fomc_dates.iloc[0]["date"]
-            mask = (table["event"] == "FOMC") & (table["date"] == d)
-        else:
-            mask = table["event"] == "FOMC"
-    
-        table.loc[mask, "Conf"] = fomc_summary["label"]
-
-
+    # ECB
     if ecb_summary:
-        ecb_dates = table[
-            (table["event"] == "ECB") &
-            (table["date"].dt.date >= today)
-        ].sort_values("date")
+        table.loc[table["event"] == "ECB", "Conf"] = ecb_summary["label"]
     
-        if not ecb_dates.empty:
-            d = ecb_dates.iloc[0]["date"]
-            mask = (table["event"] == "ECB") & (table["date"] == d)
-        else:
-            mask = table["event"] == "ECB"
-    
-        table.loc[mask, "Conf"] = ecb_summary["label"]
-
+    # EU CPI
     if eu_cpi_summary:
-        mask = table["event"] == "EU CPI"
-        table.loc[mask, "Conf"] = eu_cpi_summary["label"]
-
+        table.loc[table["event"] == "EU CPI", "Conf"] = eu_cpi_summary["label"]
+    
+    # EU GDP
     if eu_gdp_summary:
-        mask = table["event"] == "EU GDP"
-        table.loc[mask, "Conf"] = eu_gdp_summary["label"]
-
+        table.loc[table["event"] == "EU GDP", "Conf"] = eu_gdp_summary["label"]
+    
+    # SNB
     if snb_summary:
-        mask = table["event"] == "SNB"
-        table.loc[mask, "Conf"] = snb_summary["label"]
-
+        table.loc[table["event"] == "SNB", "Conf"] = snb_summary["label"]
+    
+    # CH CPI
     if ch_cpi_summary:
-        mask = table["event"] == "CH CPI"
-        table.loc[mask, "Conf"] = ch_cpi_summary["label"]
-
+        table.loc[table["event"] == "CH CPI", "Conf"] = ch_cpi_summary["label"]
+    
+    # CH GDP
     if ch_gdp_summary:
-        mask = table["event"] == "CH GDP"
-        table.loc[mask, "Conf"] = ch_gdp_summary["label"]
+        table.loc[table["event"] == "CH GDP", "Conf"] = ch_gdp_summary["label"]
 
 
     # ─────────────────────────────────────────────
